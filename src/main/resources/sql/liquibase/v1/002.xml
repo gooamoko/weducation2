@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog/1.9"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog/1.9
+  http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-1.9.xsd">
+
+
+    <changeSet id="002-1" author="gooamoko">
+        <comment>
+            Создадим таблицу оценок за итоговые практики
+        </comment>
+        <sql>
+            CREATE TABLE fpmarks(
+            fpm_pcode serial,
+            fpm_fpccode int NOT NULL,
+            fpm_crdcode int NOT NULL,
+            fpm_mark int NOT NULL,
+            CONSTRAINT fpmarks_pk PRIMARY KEY(fpm_pcode),
+            CONSTRAINT fpmarks_finalpractics_fk FOREIGN KEY(fpm_fpccode)
+            REFERENCES finalpractics(fpc_pcode) ON UPDATE CASCADE ON DELETE CASCADE,
+            CONSTRAINT fpmarks_cards_fk FOREIGN KEY(fpm_crdcode)
+            REFERENCES cards(crd_pcode) ON UPDATE CASCADE ON DELETE CASCADE);
+        </sql>
+    </changeSet>
+    <changeSet id="002-2" author="gooamoko">
+        <comment>
+            Добавим в таблицу persons поле "сирота"
+        </comment>
+        <sql>
+            ALTER TABLE persons ADD COLUMN psn_orphan boolean NOT NULL DEFAULT false;
+        </sql>
+    </changeSet>
+    <changeSet id="002-3" author="gooamoko">
+        <comment>
+            Добавим в таблицу persons поле "инвалид"
+        </comment>
+        <sql>
+            ALTER TABLE persons ADD COLUMN psn_invalid boolean NOT NULL DEFAULT false;
+        </sql>
+    </changeSet>
+    <changeSet id="002-4" author="gooamoko">
+        <comment>
+            Добавим в таблицу persons поле "серия паспорта"
+        </comment>
+        <sql>
+            ALTER TABLE persons ADD COLUMN psn_passportseria varchar(6);
+        </sql>
+    </changeSet>
+    <changeSet id="002-5" author="gooamoko">
+        <comment>
+            Добавим в таблицу persons поле "номер паспорта"
+        </comment>
+        <sql>
+            ALTER TABLE persons ADD COLUMN psn_passportnumber varchar(10);
+        </sql>
+    </changeSet>
+    <changeSet id="002-6" author="gooamoko">
+        <comment>
+            Добавим в таблицу persons поле "дата выдачи паспорта"
+        </comment>
+        <sql>
+            ALTER TABLE persons ADD COLUMN psn_passportdate date;
+        </sql>
+    </changeSet>
+    <changeSet id="002-7" author="gooamoko">
+        <comment>
+            Добавим в таблицу persons поле "организация, выдавшая паспорт"
+        </comment>
+        <sql>
+            ALTER TABLE persons ADD COLUMN psn_passportdept varchar(255);
+        </sql>
+    </changeSet>
+    <changeSet id="002-8" author="gooamoko">
+        <comment>
+            Добавим в таблицу persons поле "ИНН"
+        </comment>
+        <sql>
+            ALTER TABLE persons ADD COLUMN psn_inn varchar(12);
+        </sql>
+    </changeSet>
+    <changeSet id="002-9" author="gooamoko">
+        <comment>
+            Добавим в таблицу persons поле "СНИЛС"
+        </comment>
+        <sql>
+            ALTER TABLE persons ADD COLUMN psn_snils varchar(15);
+        </sql>
+    </changeSet>
+    <changeSet id="002-10" author="gooamoko">
+        <comment>
+            Добавим в таблицу persons поле "домашний телефон"
+        </comment>
+        <sql>
+            ALTER TABLE persons ADD COLUMN psn_hphone varchar(15);
+        </sql>
+    </changeSet>
+    <changeSet id="002-11" author="gooamoko">
+        <comment>
+            Добавим в таблицу persons поле "рабочий телефон"
+        </comment>
+        <sql>
+            ALTER TABLE persons ADD COLUMN psn_wphone varchar(15);
+        </sql>
+    </changeSet>
+    <changeSet id="002-12" author="gooamoko">
+        <comment>
+            Добавим в таблицу persons поле "мобильный телефон"
+        </comment>
+        <sql>
+            ALTER TABLE persons ADD COLUMN psn_mphone varchar(15);
+        </sql>
+    </changeSet>
+</databaseChangeLog>

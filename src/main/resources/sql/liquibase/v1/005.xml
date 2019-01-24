@@ -1,0 +1,195 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog/1.9"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog/1.9
+  http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-1.9.xsd">
+
+    <changeSet id="005-1" author="gooamoko">
+        <comment>
+            Создадим таблицу для хранения семестров групп
+        </comment>
+        <sql>
+            CREATE TABLE groupsemesters(
+            grs_pcode serial,
+            grs_course int NOT NULL,
+            grs_semester int NOT NULL,
+            grs_beginweek int NOT NULL,
+            grs_beginmonth int NOT NULL,
+            grs_beginyear int NOT NULL,
+            grs_endweek int NOT NULL,
+            grs_endmonth int NOT NULL,
+            grs_endyear int NOT NULL,
+            grs_grpcode int NOT NULL,
+            CONSTRAINT groupsemesters_pk PRIMARY KEY(grs_pcode),
+            CONSTRAINT groupsemesters_groups_fk FOREIGN KEY(grs_grpcode) REFERENCES groups(grp_pcode) ON UPDATE CASCADE
+            ON DELETE CASCADE,
+            CONSTRAINT unique_semester UNIQUE(grs_course, grs_semester, grs_grpcode)
+            );
+        </sql>
+    </changeSet>
+    <changeSet id="005-2" author="gooamoko">
+        <comment>
+            Удалим поле exam из таблицы semestermarks
+        </comment>
+        <sql>
+            ALTER TABLE semestermarks DROP COLUMN smk_exam;
+        </sql>
+    </changeSet>
+    <changeSet id="005-3" author="gooamoko">
+        <comment>
+            Добавим поле кода модуля в таблицу semestermarks
+        </comment>
+        <sql>
+            ALTER TABLE semestermarks ADD COLUMN smk_modcode int NOT NULL;
+        </sql>
+    </changeSet>
+    <changeSet id="005-4" author="gooamoko">
+        <comment>
+            Добавим внешний ключ в таблицу semestermarks
+        </comment>
+        <sql>
+            ALTER TABLE semestermarks ADD CONSTRAINT semestermarks_modules_fk FOREIGn KEY(smk_modcode)
+            REFERENCES modules(mod_pcode) ON UPDATE CASCADE ON DELETE NO ACTION;
+        </sql>
+    </changeSet>
+    <changeSet id="005-5" author="gooamoko">
+        <comment>
+            Удалим ограничение NOT NULL у кода модуля таблицы semestermarks
+        </comment>
+        <sql>
+            ALTER TABLE semestermarks ALTER COLUMN smk_modcode DROP NOT NULL;
+        </sql>
+    </changeSet>
+    <changeSet id="005-6" author="gooamoko">
+        <comment>
+            Удалим ограничение NOT NULL у кода дисциплины таблицы semestermarks
+        </comment>
+        <sql>
+            ALTER TABLE semestermarks ALTER COLUMN smk_subcode DROP NOT NULL;
+        </sql>
+    </changeSet>
+    <changeSet id="005-7" author="gooamoko">
+        <comment>
+            Добавим курс в таблицу оценок за курсовые проекты.
+        </comment>
+        <sql>
+            ALTER TABLE cmarks ADD COLUMN cmk_course int NOT NULL DEFAULT 1;
+        </sql>
+    </changeSet>
+    <changeSet id="005-8" author="gooamoko">
+        <comment>
+            Добавим семестр в таблицу оценок за курсовые проекты.
+        </comment>
+        <sql>
+            ALTER TABLE cmarks ADD COLUMN cmk_semester int NOT NULL DEFAULT 1;
+        </sql>
+    </changeSet>
+    <changeSet id="005-9" author="gooamoko">
+        <comment>
+            Добавим средний балл аттестата в таблицу персон.
+        </comment>
+        <sql>
+            ALTER TABLE persons ADD COLUMN psn_avgball float NOT NULL DEFAULT 0;
+        </sql>
+    </changeSet>
+    <changeSet id="005-10" author="gooamoko">
+        <comment>
+            Добавим таблицу конкурса персон по специальностям
+        </comment>
+        <sql>
+            CREATE TABLE contests (
+            ctt_pcode serial,
+            ctt_psncode int NOT NULL,
+            ctt_spccode int NOT NULL,
+            ctt_year int NOT NULL,
+            CONSTRAINT contests_pk PRIMARY KEY(ctt_pcode),
+            CONSTRAINT contests_persons_fk FOREIGN KEY(ctt_psncode) REFERENCES persons(psn_pcode) ON UPDATE CASCADE ON
+            DELETE CASCADE,
+            CONSTRAINT contests_specialities_fk FOREIGN KEY(ctt_spccode) REFERENCES specialities(spc_pcode) ON UPDATE
+            CASCADE ON DELETE CASCADE);
+        </sql>
+    </changeSet>
+    <changeSet id="005-11" author="gooamoko">
+        <comment>
+            Добавим таблицу мест по специальностям
+        </comment>
+        <sql>
+            CREATE TABLE seats (
+            sea_pcode serial,
+            sea_spccode int NOT NULL,
+            sea_year int NOT NULL,
+            sea_bcount int NOT NULL DEFAULT 0,
+            sea_ccount int NOT NULL DEFAULT 0,
+            CONSTRAINT seats_pk PRIMARY KEY(sea_pcode),
+            CONSTRAINT seats_specialities_fk FOREIGN KEY(sea_spccode) REFERENCES specialities(spc_pcode) ON UPDATE
+            CASCADE ON DELETE CASCADE);
+        </sql>
+    </changeSet>
+    <changeSet id="005-12" author="gooamoko">
+        <comment>
+            Добавим ограничение на уникальность в таблицу мест
+        </comment>
+        <sql>
+            ALTER TABLE seats ADD CONSTRAINT unique_seats UNIQUE(sea_year, sea_spccode);
+        </sql>
+    </changeSet>
+    <changeSet id="005-13" author="gooamoko">
+        <comment>
+            Добавим ограничение на уникальность в таблицу заявок на поступление
+        </comment>
+        <sql>
+            ALTER TABLE contests ADD CONSTRAINT unique_contests UNIQUE(ctt_year, ctt_spccode, ctt_psncode);
+        </sql>
+    </changeSet>
+    <changeSet id="005-14" author="gooamoko">
+        <comment>
+            Добавим поле в таблицу количества мест
+        </comment>
+        <sql>
+            ALTER TABLE seats ADD COLUMN sea_extramural boolean NOT NULL DEFAULT false;
+        </sql>
+    </changeSet>
+    <changeSet id="005-15" author="gooamoko">
+        <comment>
+            Удалим ограничение на уникальность из таблицы количества мест
+        </comment>
+        <sql>
+            ALTER TABLE seats DROP CONSTRAINT unique_seats;
+        </sql>
+    </changeSet>
+    <changeSet id="005-16" author="gooamoko">
+        <comment>
+            Добавим новое ограничение на уникальность в таблицу количества мест с учетом формы обучения
+        </comment>
+        <sql>
+            ALTER TABLE seats ADD CONSTRAINT unique_seats UNIQUE(sea_year, sea_spccode, sea_extramural);
+        </sql>
+    </changeSet>
+    <changeSet id="005-17" author="gooamoko">
+        <comment>
+            Удалим ограничение в таблице заявок на поступление
+        </comment>
+        <sql>
+            ALTER TABLE contests DROP CONSTRAINT unique_contests;
+        </sql>
+    </changeSet>
+    <changeSet id="005-18" author="gooamoko">
+        <comment>
+            Добавим поле для формы обучения в таблице заявок на поступление
+        </comment>
+        <sql>
+            ALTER TABLE contests ADD COLUMN ctt_extramural boolean NOT NULL DEFAULT false;
+        </sql>
+    </changeSet>
+    <changeSet id="005-19" author="gooamoko">
+        <comment>
+            Добавим ограничение на уникальность в таблице заявок на поступление
+        </comment>
+        <sql>
+            ALTER TABLE contests ADD CONSTRAINT unique_contests UNIQUE(ctt_psncode, ctt_spccode, ctt_year,
+            ctt_extramural);
+        </sql>
+    </changeSet>
+</databaseChangeLog>

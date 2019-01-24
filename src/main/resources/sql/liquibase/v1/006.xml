@@ -1,0 +1,318 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog/1.9"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog/1.9
+  http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-1.9.xsd">
+
+    <changeSet id="006-1" author="gooamoko">
+        <comment>
+            Добавим таблицу заявок на обучение персон по специальностям
+        </comment>
+        <sql>
+            CREATE TABLE requests (
+            req_pcode serial,
+            req_psncode int NOT NULL,
+            req_spccode int NOT NULL,
+            req_year int NOT NULL,
+            req_extramural boolean NOT NULL,
+            CONSTRAINT unique_requests UNIQUE(req_psncode, req_spccode, req_year, req_extramural),
+            CONSTRAINT requests_pk PRIMARY KEY(req_pcode),
+            CONSTRAINT requests_persons_fk FOREIGN KEY(req_psncode) REFERENCES persons(psn_pcode) ON UPDATE CASCADE ON
+            DELETE CASCADE,
+            CONSTRAINT requests_specialities_fk FOREIGN KEY(req_spccode) REFERENCES specialities(spc_pcode) ON UPDATE
+            CASCADE ON DELETE CASCADE);
+        </sql>
+    </changeSet>
+    <changeSet id="006-2" author="gooamoko">
+        <comment>
+            Удалим старую и уже ненужную таблицу contests
+        </comment>
+        <sql>
+            DROP TABLE contests;
+        </sql>
+    </changeSet>
+    <changeSet id="006-3" author="gooamoko">
+        <comment>
+            Добавим в таблицу специальности столбец spc_aviable
+        </comment>
+        <sql>
+            ALTER TABLE specialities ADD COLUMN spc_aviable boolean NOT NULL DEFAULT false;
+        </sql>
+    </changeSet>
+    <changeSet id="006-4" author="gooamoko">
+        <comment>
+            Удалим из таблицы pmarks столбец pmk_length
+        </comment>
+        <sql>
+            ALTER TABLE pmarks DROP COLUMN pmk_length;
+        </sql>
+    </changeSet>
+    <changeSet id="006-5" author="gooamoko">
+        <comment>
+            Создадим фукцию int getDate(int year, int month, int week) для вычисления даты
+        </comment>
+        <sql splitStatements="false" stripComments="false">
+            <![CDATA[
+            CREATE FUNCTION getDate(int, int, int) RETURNS int AS '
+            SELECT ($1 * 1000 + $2 * 10 + $3);' LANGUAGE SQL;
+            ]]>
+        </sql>
+    </changeSet>
+    <changeSet id="006-6" author="gooamoko">
+        <comment>
+            Создадим фукцию для очистки "старых" оценок
+        </comment>
+        <sql splitStatements="false" stripComments="false">
+            <![CDATA[
+            CREATE OR REPLACE FUNCTION clearOldGroupMarks(integer) RETURNS void AS '
+            DELETE FROM fmarks WHERE fmk_subcode NOT IN (SELECT sub_pcode FROM subjects, groups 
+            WHERE (sub_plncode = grp_plncode) AND (grp_pcode = $1)) 
+            AND (fmk_crdcode IN (SELECT crd_pcode FROM cards WHERE (crd_grpcode = $1)));
+            DELETE FROM fmarks WHERE fmk_modcode NOT IN (SELECT mod_pcode FROM modules, groups 
+            WHERE (mod_plncode = grp_plncode) AND (grp_pcode = $1)) 
+            AND (fmk_crdcode IN (SELECT crd_pcode FROM cards WHERE (crd_grpcode = $1)));
+            DELETE FROM cmarks WHERE cmk_subcode NOT IN (SELECT sub_pcode FROM subjects, groups 
+            WHERE (sub_plncode = grp_plncode) AND (grp_pcode = $1)) 
+            AND (cmk_crdcode IN (SELECT crd_pcode FROM cards WHERE (crd_grpcode = $1)));
+            DELETE FROM fpmarks WHERE fpm_fpccode NOT IN (SELECT fpc_pcode FROM finalpractics, groups 
+            WHERE (fpc_plncode = grp_plncode) AND (grp_pcode = $1)) 
+            AND (fpm_crdcode IN (SELECT crd_pcode FROM cards WHERE (crd_grpcode = $1)));
+            DELETE FROM gmarks WHERE gmk_subcode NOT IN (SELECT sub_pcode FROM subjects, groups 
+            WHERE (sub_plncode = grp_plncode) AND (grp_pcode = $1)) 
+            AND (gmk_crdcode IN (SELECT crd_pcode FROM cards WHERE (crd_grpcode = $1)));
+            DELETE FROM pmarks WHERE pmk_prccode NOT IN (SELECT prc_pcode FROM practics, groups 
+            WHERE (prc_plncode = grp_plncode) AND (grp_pcode = $1)) 
+            AND (pmk_crdcode IN (SELECT crd_pcode FROM cards WHERE (crd_grpcode = $1)));
+            DELETE FROM monthmarks WHERE mmk_subcode NOT IN (SELECT sub_pcode FROM subjects, groups 
+            WHERE (sub_plncode = grp_plncode) AND (grp_pcode = $1)) 
+            AND (mmk_crdcode IN (SELECT crd_pcode FROM cards WHERE (crd_grpcode = $1)));
+            ' LANGUAGE SQL;
+            ]]>
+        </sql>
+    </changeSet>
+    <changeSet id="006-7" author="gooamoko">
+        <comment>
+            Создадим вьюху для упрощения подсчета среднего балла
+        </comment>
+        <sql splitStatements="false" stripComments="false">
+            <![CDATA[
+            CREATE OR REPLACE VIEW fmarkview AS 
+            SELECT 1 AS fmv_id, fmk_crdcode AS fmv_crdcode, SUM(fmk_mark) AS fmv_total, COUNT(fmk_mark) AS fmv_count 
+            FROM fmarks WHERE (fmk_mark IS NOT NULL) AND (fmk_mark >= 0) AND (fmk_mark <= 5) GROUP BY fmk_crdcode 
+            UNION SELECT 2, cmk_crdcode, SUM(cmk_mark), COUNT(cmk_mark) 
+            FROM cmarks WHERE (cmk_mark IS NOT NULL) AND (cmk_mark >= 0) AND (cmk_mark <= 5) GROUP BY cmk_crdcode 
+            UNION SELECT 3, fpm_crdcode, SUM(fpm_mark), COUNT(fpm_mark) 
+            FROM fpmarks WHERE (fpm_mark IS NOT NULL) AND (fpm_mark >= 0) AND (fpm_mark <= 5) GROUP BY fpm_crdcode 
+            UNION SELECT 4, gmk_crdcode, SUM(gmk_mark), COUNT(gmk_mark) 
+            FROM gmarks WHERE (gmk_mark IS NOT NULL) AND (gmk_mark >= 0) AND (gmk_mark <= 5) GROUP BY gmk_crdcode;
+            ]]>
+        </sql>
+    </changeSet>
+    <changeSet id="006-8" author="gooamoko">
+        <comment>
+            Создадим фукцию для вычисления среднего балла
+        </comment>
+        <sql splitStatements="false" stripComments="false">
+            <![CDATA[
+            CREATE OR REPLACE FUNCTION getAverageMark(integer) RETURNS decimal(3,2) AS ' 
+            SELECT CAST(CAST(SUM(fmv_total) AS decimal(5,2)) / SUM(fmv_count) AS decimal(3,2)) FROM fmarkview 
+            WHERE (fmv_crdcode = $1);' LANGUAGE sql;
+            ]]>
+        </sql>
+    </changeSet>
+    <changeSet id="006-9" author="gooamoko">
+        <comment>
+            Создадим функцию для вычисления
+        </comment>
+        <sql splitStatements="false" stripComments="false">
+            <![CDATA[
+            CREATE OR REPLACE FUNCTION countMarks(integer) RETURNS bigint AS ' 
+            SELECT (SELECT COUNT(*) FROM monthmarks WHERE mmk_psncode = $1) + 
+            (SELECT COUNT(*) FROM fmarks, persons, cards WHERE (crd_pcode = fmk_crdcode) AND (psn_pcode = crd_psncode) AND (psn_pcode = $1));
+            ' LANGUAGE SQL;
+            ]]>
+        </sql>
+    </changeSet>
+    <changeSet id="006-10" author="gooamoko">
+        <comment>
+            Создадим вьюху для отображения персон с подозрением на дублирование
+        </comment>
+        <sql splitStatements="false" stripComments="false">
+            <![CDATA[
+            CREATE OR REPLACE VIEW dublicates AS
+            SELECT psn_firstname AS dbl_fname, psn_middlename AS dbl_mname, psn_lastname dbl_lname, psn_birthdate AS dbl_birthdate, 
+            COUNT(psn_pcode) AS dbl_count
+            FROM persons WHERE (substring(psn_firstname, 1, 3) IN (SELECT DISTINCT substring(psn_firstname, 1, 3) FROM persons)) 
+            GROUP BY psn_firstname, psn_middlename, psn_lastname, psn_birthdate 
+            HAVING (COUNT(psn_pcode) > 1)
+            ORDER BY dbl_count DESC, psn_firstname;
+            ]]>
+        </sql>
+    </changeSet>
+    <changeSet id="006-11" author="gooamoko">
+        <comment>
+            Создадим вьюху для отображения недельных пропусков с датой для учета по семестрам
+        </comment>
+        <sql splitStatements="false" stripComments="false">
+            <![CDATA[
+            CREATE OR REPLACE VIEW missingsView AS
+            SELECT wms_legal AS wmv_legal, wms_illegal AS wmv_illegal, wms_crdcode AS wmv_crdcode,
+            wms_year AS wmv_year, wms_month AS wmv_month, getDate(wms_year, wms_month, wms_week) AS wmv_date
+            FROM weekmissings;
+            ]]>
+        </sql>
+    </changeSet>
+    <changeSet id="006-12" author="gooamoko">
+        <comment>
+            Добавим поле в таблицу практик для сокращенного наименования.
+        </comment>
+        <sql splitStatements="false" stripComments="false">
+            ALTER TABLE practics ADD COLUMN prc_shortname varchar(30) NOT NULL DEFAULT 'FIXME';
+        </sql>
+    </changeSet>
+    <changeSet id="006-13" author="gooamoko">
+        <comment>
+            Переименуем поле prc_name в prc_fullname.
+        </comment>
+        <sql splitStatements="false" stripComments="false">
+            ALTER TABLE practics RENAME COLUMN prc_name TO prc_fullname;
+        </sql>
+    </changeSet>
+    <changeSet id="006-14" author="gooamoko">
+        <comment>
+            добавим в план год. Это начало цепочки изменений, после которых структура specialities -> plans
+            будет серьезно изменена. В планах будет всё, что так любят менять в специальностях министры.
+            В специальностях же останется короткое наименование, описание и признаки активности/доступности для
+            поступления.
+        </comment>
+        <sql splitStatements="false" stripComments="false">
+            ALTER TABLE plans ADD COLUMN pln_beginyear int NOT NULL DEFAULT 0;
+        </sql>
+    </changeSet>
+    <changeSet id="006-15" author="gooamoko">
+        <comment>
+            Обновим год начала действия плана там, где это возможно.
+        </comment>
+        <sql splitStatements="false" stripComments="false">
+            UPDATE plans SET pln_beginyear = date_part('year', pln_date) WHERE (pln_date IS NOT NULL);
+        </sql>
+    </changeSet>
+    <changeSet id="006-16" author="gooamoko">
+        <comment>
+            Удалим из плана описание.
+        </comment>
+        <sql splitStatements="false" stripComments="false">
+            ALTER TABLE plans DROP COLUMN pln_description;
+        </sql>
+    </changeSet>
+    <changeSet id="006-17" author="gooamoko">
+        <comment>
+            Добавим в план наименование специальности.
+        </comment>
+        <sql splitStatements="false" stripComments="false">
+            ALTER TABLE plans ADD COLUMN pln_spcname varchar(255) NOT NULL DEFAULT '';
+        </sql>
+    </changeSet>
+    <changeSet id="006-18" author="gooamoko">
+        <comment>
+            Добавим в план квалификацию.
+        </comment>
+        <sql splitStatements="false" stripComments="false">
+            ALTER TABLE plans ADD COLUMN pln_kvalification varchar(128) NOT NULL DEFAULT '';
+        </sql>
+    </changeSet>
+    <changeSet id="006-19" author="gooamoko">
+        <comment>
+            Добавим в план специализацию.
+        </comment>
+        <sql splitStatements="false" stripComments="false">
+            ALTER TABLE plans ADD COLUMN pln_specialization varchar(128) NOT NULL DEFAULT '';
+        </sql>
+    </changeSet>
+    <changeSet id="006-20" author="gooamoko">
+        <comment>
+            Добавим в план шифр специальности.
+        </comment>
+        <sql splitStatements="false" stripComments="false">
+            ALTER TABLE plans ADD COLUMN pln_spckey varchar(128) NOT NULL DEFAULT '';
+        </sql>
+    </changeSet>
+    <changeSet id="006-21" author="gooamoko">
+        <comment>
+            Обновим значения, связанные со специальностью, взяв их у специальности.
+        </comment>
+        <sql splitStatements="false" stripComments="false">
+            UPDATE plans SET
+            pln_spckey = (SELECT spc_key FROM specialities WHERE (spc_pcode = pln_spccode)),
+            pln_specialization = (SELECT spc_specialization FROM specialities WHERE (spc_pcode = pln_spccode)),
+            pln_kvalification = (SELECT spc_kvalification FROM specialities WHERE (spc_pcode = pln_spccode)),
+            pln_spcname = (SELECT spc_fullname FROM specialities WHERE (spc_pcode = pln_spccode));
+        </sql>
+    </changeSet>
+    <changeSet id="006-22" author="gooamoko">
+        <comment>
+            Переименуем полное наименование специальности в описание.
+        </comment>
+        <sql splitStatements="false" stripComments="false">
+            ALTER TABLE specialities RENAME COLUMN spc_fullname TO spc_description;
+        </sql>
+    </changeSet>
+    <changeSet id="006-23" author="gooamoko">
+        <comment>
+            Переименуем полное наименование специальности в описание.
+        </comment>
+        <sql splitStatements="false" stripComments="false">
+            ALTER TABLE specialities RENAME COLUMN spc_shortname TO spc_name;
+        </sql>
+    </changeSet>
+    <changeSet id="006-24" author="gooamoko">
+        <comment>
+            Грохнем шифр специальности
+        </comment>
+        <sql splitStatements="false" stripComments="false">
+            ALTER TABLE specialities DROP COLUMN spc_key;
+        </sql>
+    </changeSet>
+    <changeSet id="006-25" author="gooamoko">
+        <comment>
+            Грохнем квалификацию специальности
+        </comment>
+        <sql splitStatements="false" stripComments="false">
+            ALTER TABLE specialities DROP COLUMN spc_kvalification;
+        </sql>
+    </changeSet>
+    <changeSet id="006-26" author="gooamoko">
+        <comment>
+            Грохнем специализацию у специальности.
+        </comment>
+        <sql splitStatements="false" stripComments="false">
+            ALTER TABLE specialities DROP COLUMN spc_specialization;
+        </sql>
+    </changeSet>
+    <changeSet id="006-27" author="gooamoko">
+        <comment>
+            Грохнем все планы приема.
+        </comment>
+        <sql splitStatements="false" stripComments="false">
+            DELETE FROM seats;
+        </sql>
+    </changeSet>
+    <changeSet id="006-28" author="gooamoko">
+        <comment>
+            Грохнем все заявки на поступление.
+        </comment>
+        <sql splitStatements="false" stripComments="false">
+            DELETE FROM requests;
+        </sql>
+    </changeSet>
+    <changeSet id="006-29" author="gooamoko">
+        <comment>
+            Грохнем поле даты учебного плана.
+        </comment>
+        <sql splitStatements="false" stripComments="false">
+            ALTER TABLE plans DROP COLUMN pln_date;
+        </sql>
+    </changeSet>
+</databaseChangeLog>

@@ -1,0 +1,206 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog/1.9"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog/1.9
+  http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-1.9.xsd">
+
+
+    <changeSet id="003-1" author="gooamoko">
+        <comment>
+            Создадим таблицу населенных пунктов
+        </comment>
+        <sql>
+            CREATE TABLE places(
+            plc_pcode serial,
+            plc_type int NOT NULL default 0,
+            plc_name varchar(255) NOT NULL,
+            CONSTRAINT places_pk PRIMARY KEY(plc_pcode)
+            );
+        </sql>
+    </changeSet>
+    <changeSet id="003-2" author="gooamoko">
+        <comment>
+            Добавим в таблицу persons поле "psn_plccode"
+        </comment>
+        <sql>
+            ALTER TABLE persons ADD COLUMN psn_plccode int;
+        </sql>
+    </changeSet>
+    <changeSet id="003-3" author="gooamoko">
+        <comment>
+            Добавим в таблицу persons внешний ключ
+        </comment>
+        <sql>
+            ALTER TABLE persons ADD CONSTRAINT persons_places_fk FOREIGN KEY(psn_plccode) REFERENCES
+            places(plc_pcode) ON UPDATE CASCADE ON DELETE NO ACTION;
+        </sql>
+    </changeSet>
+    <changeSet id="003-4" author="gooamoko">
+        <comment>
+            Добавим в таблицу persons поле "адрес"
+        </comment>
+        <sql>
+            ALTER TABLE persons ADD COLUMN psn_address varchar(255);
+        </sql>
+    </changeSet>
+    <changeSet id="003-5" author="gooamoko">
+        <comment>
+            Добавим в таблицу persons поле "номер студенческого билета"
+        </comment>
+        <sql>
+            ALTER TABLE persons ADD COLUMN psn_biletnumber varchar(10);
+        </sql>
+    </changeSet>
+    <changeSet id="003-6" author="gooamoko">
+        <comment>
+            Удалим поле "номер студенческого билета"
+        </comment>
+        <sql>
+            ALTER TABLE persons DROP COLUMN psn_biletnumber;
+        </sql>
+    </changeSet>
+    <changeSet id="003-7" author="gooamoko">
+        <comment>
+            Создадим таблицу законных представителей (delegates)
+        </comment>
+        <sql>
+            CREATE TABLE delegates(
+            dlg_pcode serial,
+            dlg_fullname varchar(128) NOT NULL,
+            dlg_hphone varchar(20),
+            dlg_wphone varchar(20),
+            dlg_mphone varchar(20) NOT NULL,
+            dlg_job varchar(255) NOT NULL,
+            dlg_post varchar(255),
+            dlg_description varchar(255),
+            dlg_psncode int NOT NULL,
+            CONSTRAINT delegates_pk PRIMARY KEY(dlg_pcode),
+            CONSTRAINT delegates_persons_fk FOREIGN KEY(dlg_psncode) REFERENCES persons(psn_pcode) ON UPDATE CASCADE ON
+            DELETE CASCADE);
+        </sql>
+    </changeSet>
+    <changeSet id="003-8" author="gooamoko">
+        <comment>
+            Добавим поле "номер студенческого билета" в таблицу личных карточек
+        </comment>
+        <sql>
+            ALTER TABLE cards ADD COLUMN crd_biletnumber varchar(10);
+        </sql>
+    </changeSet>
+    <changeSet id="003-9" author="gooamoko">
+        <comment>
+            Добавим поле иностранного языка в таблицу персон
+        </comment>
+        <sql>
+            ALTER TABLE persons ADD COLUMN psn_lngcode int NOT NULL DEFAULT 0;
+        </sql>
+    </changeSet>
+    <changeSet id="003-10" author="gooamoko">
+        <comment>
+            Удалим поля для телефонов у персон
+        </comment>
+        <sql>
+            ALTER TABLE persons DROP COLUMN psn_hphone;
+            ALTER TABLE persons DROP COLUMN psn_wphone;
+            ALTER TABLE persons DROP COLUMN psn_mphone;
+        </sql>
+    </changeSet>
+    <changeSet id="003-11" author="gooamoko">
+        <comment>
+            Создадим одно поле для телефонов у персон
+        </comment>
+        <sql>
+            ALTER TABLE persons ADD COLUMN psn_phones varchar(128);
+        </sql>
+    </changeSet>
+    <changeSet id="003-12" author="gooamoko">
+        <comment>
+            Удалим поля для телефонов у делегатов
+        </comment>
+        <sql>
+            ALTER TABLE delegates DROP COLUMN dlg_hphone;
+            ALTER TABLE delegates DROP COLUMN dlg_wphone;
+            ALTER TABLE delegates DROP COLUMN dlg_mphone;
+        </sql>
+    </changeSet>
+    <changeSet id="003-13" author="gooamoko">
+        <comment>
+            Создадим одно поле для телефонов у персон
+        </comment>
+        <sql>
+            ALTER TABLE delegates ADD COLUMN dlg_phones varchar(128);
+        </sql>
+    </changeSet>
+    <changeSet id="003-14" author="gooamoko">
+        <comment>
+            Увеличим размер поля документа о предыдущем образовании
+        </comment>
+        <sql>
+            ALTER TABLE cards ADD COLUMN crd_docname1 varchar(255);
+            UPDATE cards SET crd_docname1 = crd_docname;
+            ALTER TABLE cards DROP COLUMN crd_docname;
+            ALTER TABLE cards RENAME COLUMN crd_docname1 TO crd_docname;
+        </sql>
+    </changeSet>
+    <changeSet id="003-15" author="gooamoko">
+        <comment>
+            Увеличим размер поля директора комиссии
+        </comment>
+        <sql>
+            ALTER TABLE cards ADD COLUMN crd_remandreason1 varchar(255);
+            UPDATE cards SET crd_remandreason1 = crd_remandreason;
+            ALTER TABLE cards DROP COLUMN crd_remandreason;
+            ALTER TABLE cards RENAME COLUMN crd_remandreason1 TO crd_remandreason;
+        </sql>
+    </changeSet>
+    <changeSet id="003-16" author="gooamoko">
+        <comment>
+            Увеличим поле с идентификатором сессии из таблицы сессий
+        </comment>
+        <sql>
+            ALTER TABLE clientsessions DROP COLUMN cls_ssid;
+        </sql>
+    </changeSet>
+    <changeSet id="003-17" author="gooamoko">
+        <comment>
+            Превратим описание в таблице учетных записей в полное имя
+        </comment>
+        <sql>
+            ALTER TABLE accounts RENAME COLUMN aco_description TO aco_fullname;
+        </sql>
+    </changeSet>
+    <changeSet id="003-18" author="gooamoko">
+        <comment>
+            Запретим NULL значения для полного имени
+        </comment>
+        <sql>
+            ALTER TABLE accounts ALTER COLUMN aco_fullname SET NOT NULL;
+        </sql>
+    </changeSet>
+    <changeSet id="003-19" author="gooamoko">
+        <comment>
+            Создадим поле для хранения стартовой страницы пользователя
+        </comment>
+        <sql>
+            ALTER TABLE accounts ADD COLUMN aco_startpage varchar(255);
+        </sql>
+    </changeSet>
+    <changeSet id="003-20" author="gooamoko">
+        <comment>
+            Сделаем поле с кодом учетной записи необязательным
+        </comment>
+        <sql>
+            ALTER TABLE clientsessions ALTER COLUMN cls_acocode DROP NOT NULL;
+        </sql>
+    </changeSet>
+    <changeSet id="003-21" author="gooamoko">
+        <comment>
+            Удаляем поле последнего действия
+        </comment>
+        <sql>
+            ALTER TABLE clientsessions DROP COLUMN cls_lastaction;
+        </sql>
+    </changeSet>
+</databaseChangeLog>
