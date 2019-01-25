@@ -1,6 +1,10 @@
 package ru.gooamoko.weducation.entity;
 
+import org.hibernate.validator.constraints.Length;
+
 import javax.persistence.*;
+import javax.validation.constraints.NotEmpty;
+import javax.validation.constraints.NotNull;
 import java.io.Serializable;
 
 /**
@@ -18,9 +22,13 @@ public class Speciality implements Serializable {
     private int id;
 
     @Column(name = "spc_name", nullable = false, length = 10)
+    @NotEmpty
+    @Length(max = 10)
     private String name;
 
-    @Column(name = "spc_description", nullable = false, length = 255)
+    @Column(name = "spc_description", nullable = false)
+    @NotEmpty
+    @Length(max = 255)
     private String description;
 
     @Column(name = "spc_actual", nullable = false)
@@ -29,12 +37,15 @@ public class Speciality implements Serializable {
     @Column(name = "spc_aviable", nullable = false)
     private boolean aviable;
 
-    public int getId() {
-        return id;
+    public void updateFrom(Speciality other) {
+        actual = other.isActual();
+        aviable = other.isAviable();
+        name = other.getName();
+        description = other.getDescription();
     }
 
-    public String getNameForList() {
-        return name;
+    public int getId() {
+        return id;
     }
 
     public boolean isActual() {
