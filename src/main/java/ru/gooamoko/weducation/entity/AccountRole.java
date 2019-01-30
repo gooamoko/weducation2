@@ -7,22 +7,18 @@ package ru.gooamoko.weducation.entity;
  * @author Воронин Леонид
  */
 public enum AccountRole {
-    // Добавляйте роли в конец списка!
-    ADMIN, DEPARTMENT, RECEPTION, DEPOT;
+  ADMIN("Администратор"),
+  DEPARTMENT("Отделение"),
+  RECEPTION("Приемная комиссия"),
+  DEPOT("Учебная часть");
 
-    private static final String[] descriptions = {
-            "Администратор",
-            "Отделение",
-            "Приемная комиссия",
-            "Учебная часть"
-            // Добавляйте сюда описания для всех новых значений перечисления
-    };
+  private String description;
 
-    public String getDescription() {
-        try {
-            return descriptions[this.ordinal()];
-        } catch (IndexOutOfBoundsException e) {
-            throw new RuntimeException("Количество значений перечисления не соответствует количеству описаний!");
-        }
-    }
+  AccountRole(String description) {
+    this.description = description;
+  }
+
+  public String getDescription() {
+    return description;
+  }
 }

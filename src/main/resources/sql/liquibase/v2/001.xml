@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog/1.9"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog/1.9
+  http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-1.9.xsd">
+
+
+    <changeSet id="2-001-1" author="gooamoko">
+        <comment>
+            Создадим столбец в таблице учетных записей для хранения ролей в виде строки
+        </comment>
+        <sql>
+            ALTER TABLE accounts ADD COLUMN aco_roles varchar;
+        </sql>
+    </changeSet>
+    <changeSet id="2-001-2" author="gooamoko">
+        <comment>
+            Обновляем роли в поле
+        </comment>
+        <sql>
+            UPDATE accounts SET aco_roles = 'ADMIN' WHERE aco_role = 0;
+            UPDATE accounts SET aco_roles = 'DEPARTMENT' WHERE aco_role = 1;
+            UPDATE accounts SET aco_roles = 'RECEPTION' WHERE aco_role = 2;
+            UPDATE accounts SET aco_roles = 'DEPOT' WHERE aco_role = 3;
+        </sql>
+    </changeSet>
+</databaseChangeLog>
