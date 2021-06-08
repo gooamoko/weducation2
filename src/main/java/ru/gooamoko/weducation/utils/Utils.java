@@ -7,9 +7,11 @@ import java.util.Date;
 import java.util.GregorianCalendar;
 
 public final class Utils {
-
   private static final String SALT = "WeducationPWD@2015byGooamoko";
   private static final SimpleDateFormat dateFormat = new SimpleDateFormat("dd.MM.yyyy");
+  private static final String[] MONTHS = {"января", "февраля", "марта", "апреля",
+          "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"};
+
 
   private Utils() {
     throw new IllegalStateException("This constructor should not be called!");
@@ -116,28 +118,22 @@ public final class Utils {
       if (date == null) {
         throw new IllegalArgumentException("Null value is not allowed!");
       }
-      final String[] months = {"января", "февраля", "марта", "апреля",
-          "мая", "июня", "июля", "августа", "сентября", "октября",
-          "ноября", "декабря"};
       Calendar c = new GregorianCalendar();
       c.setTime(date);
       int month = c.get(Calendar.MONTH);
       int day = c.get(Calendar.DAY_OF_MONTH);
       int year = c.get(Calendar.YEAR);
-      return day + " " + months[month] + " " + year;
+      return day + " " + MONTHS[month] + " " + year;
     } catch (Exception e) {
       return "exception";
     }
   }
 
   public static String getStringForMonth(final int month) {
-    final String[] months = {"января", "февраля", "марта", "апреля",
-        "мая", "июня", "июля", "августа", "сентября", "октября",
-        "ноября", "декабря"};
     if ((month < 0) || (month >= 12)) {
       throw new IllegalArgumentException("Illegal month value! Use from 0 to 11!");
     }
-    return months[month];
+    return MONTHS[month];
   }
 
   public static String formatDate(final Date date) {
@@ -160,8 +156,6 @@ public final class Utils {
         result = "x";
         break;
       case 1:
-        result = "неудовлетворительно";
-        break;
       case 2:
         result = "неудовлетворительно";
         break;
