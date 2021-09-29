@@ -1,11 +1,11 @@
-
-CREATE FUNCTION public.getdate(year integer, month integer, week integer) RETURNS integer
+CREATE OR REPLACE FUNCTION public.getdate(year integer, month integer, week integer) RETURNS integer
     LANGUAGE sql
-    AS $$
-            SELECT (year * 1000 + month * 10 + week);$$;
+AS $$
+    SELECT (year * 1000 + month * 10 + week);
+$$;
 
 
-CREATE TABLE public.accounts (
+CREATE TABLE IF NOT EXISTS public.accounts (
     aco_pcode serial NOT NULL,
     aco_login character varying(50) NOT NULL,
     aco_password character varying(50) NOT NULL,
@@ -16,7 +16,7 @@ CREATE TABLE public.accounts (
 );
 
 
-CREATE TABLE public.cards (
+CREATE TABLE IF NOT EXISTS public.cards (
     crd_psncode integer NOT NULL,
     crd_spccode integer NOT NULL,
     crd_extramural boolean DEFAULT false NOT NULL,
@@ -49,7 +49,7 @@ CREATE TABLE public.cards (
 );
 
 
-CREATE TABLE public.clientsessions (
+CREATE TABLE IF NOT EXISTS public.clientsessions (
     cls_pcode serial NOT NULL,
     cls_acocode integer,
     cls_ipaddr character varying(128),
@@ -57,7 +57,7 @@ CREATE TABLE public.clientsessions (
 );
 
 
-CREATE TABLE public.cmarks (
+CREATE TABLE IF NOT EXISTS public.cmarks (
     cmk_subcode integer NOT NULL,
     cmk_theme character varying(255),
     cmk_crdcode integer NOT NULL,
@@ -68,7 +68,7 @@ CREATE TABLE public.cmarks (
 );
 
 
-CREATE TABLE public.delegates (
+CREATE TABLE IF NOT EXISTS public.delegates (
     dlg_pcode serial NOT NULL,
     dlg_fullname character varying(128) NOT NULL,
     dlg_job character varying(255) NOT NULL,
@@ -79,7 +79,7 @@ CREATE TABLE public.delegates (
 );
 
 
-CREATE TABLE public.departmentprofiles (
+CREATE TABLE IF NOT EXISTS public.departmentprofiles (
     dpr_pcode serial NOT NULL,
     dpr_depcode integer NOT NULL,
     dpr_spccode integer NOT NULL,
@@ -87,7 +87,7 @@ CREATE TABLE public.departmentprofiles (
 );
 
 
-CREATE TABLE public.departments (
+CREATE TABLE IF NOT EXISTS public.departments (
     dep_pcode serial NOT NULL,
     dep_name character varying(100) NOT NULL,
     dep_master character varying(128) NOT NULL,
@@ -95,7 +95,7 @@ CREATE TABLE public.departments (
 );
 
 
-CREATE TABLE public.persons (
+CREATE TABLE IF NOT EXISTS public.persons (
     psn_birthplace character varying(255),
     psn_male boolean NOT NULL,
     psn_foreign boolean NOT NULL,
@@ -120,11 +120,11 @@ CREATE TABLE public.persons (
 );
 
 
-CREATE VIEW public.diplomeblanks AS
- SELECT cards.crd_pcode AS dbk_pcode,
-    cards.crd_spccode AS dbk_spccode,
-    cards.crd_extramural AS dbk_extramural,
-    (((((persons.psn_firstname)::text || ' '::text) || (persons.psn_middlename)::text) || ' '::text) || (persons.psn_lastname)::text) AS dbk_fullname,
+CREATE OR REPLACE VIEW public.diplomeblanks AS
+SELECT cards.crd_pcode      AS dbk_pcode,
+       cards.crd_spccode    AS dbk_spccode,
+       cards.crd_extramural AS dbk_extramural,
+       (((((persons.psn_firstname)::text || ' '::text) || (persons.psn_middlename)::text) || ' '::text) || (persons.psn_lastname)::text) AS dbk_fullname,
     (date_part('year'::text, cards.crd_edate) <> date_part('year'::text, now())) AS dbk_duplicate,
     cards.crd_red AS dbk_red,
     cards.crd_diplomenumber AS dbk_diplomenumber,
@@ -132,131 +132,133 @@ CREATE VIEW public.diplomeblanks AS
     cards.crd_regnumber AS dbk_regnumber,
     cards.crd_diplomedate AS dbk_diplomedate,
     cards.crd_edate AS dbk_edate
-   FROM public.cards,
-    public.persons
-  WHERE ((cards.crd_psncode = persons.psn_pcode) AND (cards.crd_remanded = false) AND (date_part('year'::text, cards.crd_diplomedate) = date_part('year'::text, now())));
+FROM public.cards, public.persons
+WHERE ((cards.crd_psncode = persons.psn_pcode)
+  AND (cards.crd_remanded = false)
+  AND (date_part('year'::text, cards.crd_diplomedate) = date_part('year'::text, now())));
 
 
-CREATE VIEW public.dublicates AS
- SELECT persons.psn_firstname AS dbl_fname,
-    persons.psn_middlename AS dbl_mname,
-    persons.psn_lastname AS dbl_lname,
-    persons.psn_birthdate AS dbl_birthdate,
-    count(persons.psn_pcode) AS dbl_count
-   FROM public.persons
-  WHERE ("substring"((persons.psn_firstname)::text, 1, 3) IN ( SELECT DISTINCT "substring"((persons_1.psn_firstname)::text, 1, 3) AS "substring"
-           FROM public.persons persons_1))
-  GROUP BY persons.psn_firstname, persons.psn_middlename, persons.psn_lastname, persons.psn_birthdate
- HAVING (count(persons.psn_pcode) > 1)
-  ORDER BY (count(persons.psn_pcode)) DESC, persons.psn_firstname;
+CREATE OR REPLACE VIEW public.dublicates AS
+SELECT persons.psn_firstname    AS dbl_fname,
+       persons.psn_middlename   AS dbl_mname,
+       persons.psn_lastname     AS dbl_lname,
+       persons.psn_birthdate    AS dbl_birthdate,
+       count(persons.psn_pcode) AS dbl_count
+FROM public.persons
+WHERE ("substring"((persons.psn_firstname)::text, 1, 3) IN
+       (SELECT DISTINCT "substring"((persons_1.psn_firstname)::text, 1, 3) AS "substring"
+        FROM public.persons persons_1))
+GROUP BY persons.psn_firstname, persons.psn_middlename, persons.psn_lastname, persons.psn_birthdate
+HAVING (count(persons.psn_pcode) > 1)
+ORDER BY (count(persons.psn_pcode)) DESC, persons.psn_firstname;
 
 
-CREATE TABLE public.fmarks (
+CREATE TABLE IF NOT EXISTS public.fmarks (
     fmk_subcode integer,
     fmk_crdcode integer NOT NULL,
-    fmk_mark integer NOT NULL,
+    fmk_mark    integer NOT NULL,
     fmk_audload integer NOT NULL,
     fmk_maxload integer NOT NULL,
-    fmk_pcode serial NOT NULL,
+    fmk_pcode   serial NOT NULL,
     fmk_modcode integer
 );
 
 
-CREATE TABLE public.finalpractics (
-    fpc_pcode serial NOT NULL,
-    fpc_name character varying(255),
-    fpc_number integer DEFAULT 0 NOT NULL,
-    fpc_length double precision NOT NULL,
+CREATE TABLE IF NOT EXISTS public.finalpractics (
+    fpc_pcode   serial NOT NULL,
+    fpc_name    character varying(255),
+    fpc_number  integer DEFAULT 0 NOT NULL,
+    fpc_length  double precision NOT NULL,
     fpc_plncode integer NOT NULL
 );
 
 
-CREATE TABLE public.fpmarks (
+CREATE TABLE IF NOT EXISTS public.fpmarks (
     fpm_pcode serial NOT NULL,
     fpm_fpccode integer NOT NULL,
     fpm_crdcode integer NOT NULL,
-    fpm_mark integer NOT NULL
+    fpm_mark    integer NOT NULL
 );
 
 
-CREATE TABLE public.gmarks (
+CREATE TABLE IF NOT EXISTS public.gmarks (
     gmk_subcode integer NOT NULL,
     gmk_crdcode integer NOT NULL,
-    gmk_mark integer NOT NULL,
-    gmk_pcode serial NOT NULL
+    gmk_mark    integer NOT NULL,
+    gmk_pcode   serial  NOT NULL
 );
 
 
-CREATE VIEW public.fmarkview AS
- SELECT 1 AS fmv_id,
-    fmarks.fmk_crdcode AS fmv_crdcode,
-    sum(fmarks.fmk_mark) AS fmv_total,
-    count(fmarks.fmk_mark) AS fmv_count
-   FROM public.fmarks
-  WHERE ((fmarks.fmk_mark IS NOT NULL) AND (fmarks.fmk_mark >= 0) AND (fmarks.fmk_mark <= 5))
-  GROUP BY fmarks.fmk_crdcode
+CREATE OR REPLACE VIEW public.fmarkview AS
+SELECT 1                      AS fmv_id,
+       fmarks.fmk_crdcode     AS fmv_crdcode,
+       sum(fmarks.fmk_mark)   AS fmv_total,
+       count(fmarks.fmk_mark) AS fmv_count
+FROM public.fmarks
+WHERE ((fmarks.fmk_mark IS NOT NULL) AND (fmarks.fmk_mark >= 0) AND (fmarks.fmk_mark <= 5))
+GROUP BY fmarks.fmk_crdcode
 UNION
- SELECT 2 AS fmv_id,
-    cmarks.cmk_crdcode AS fmv_crdcode,
-    sum(cmarks.cmk_mark) AS fmv_total,
-    count(cmarks.cmk_mark) AS fmv_count
-   FROM public.cmarks
-  WHERE ((cmarks.cmk_mark IS NOT NULL) AND (cmarks.cmk_mark >= 0) AND (cmarks.cmk_mark <= 5))
-  GROUP BY cmarks.cmk_crdcode
+SELECT 2                      AS fmv_id,
+       cmarks.cmk_crdcode     AS fmv_crdcode,
+       sum(cmarks.cmk_mark)   AS fmv_total,
+       count(cmarks.cmk_mark) AS fmv_count
+FROM public.cmarks
+WHERE ((cmarks.cmk_mark IS NOT NULL) AND (cmarks.cmk_mark >= 0) AND (cmarks.cmk_mark <= 5))
+GROUP BY cmarks.cmk_crdcode
 UNION
- SELECT 3 AS fmv_id,
-    fpmarks.fpm_crdcode AS fmv_crdcode,
-    sum(fpmarks.fpm_mark) AS fmv_total,
-    count(fpmarks.fpm_mark) AS fmv_count
-   FROM public.fpmarks
-  WHERE ((fpmarks.fpm_mark IS NOT NULL) AND (fpmarks.fpm_mark >= 0) AND (fpmarks.fpm_mark <= 5))
-  GROUP BY fpmarks.fpm_crdcode
+SELECT 3                       AS fmv_id,
+       fpmarks.fpm_crdcode     AS fmv_crdcode,
+       sum(fpmarks.fpm_mark)   AS fmv_total,
+       count(fpmarks.fpm_mark) AS fmv_count
+FROM public.fpmarks
+WHERE ((fpmarks.fpm_mark IS NOT NULL) AND (fpmarks.fpm_mark >= 0) AND (fpmarks.fpm_mark <= 5))
+GROUP BY fpmarks.fpm_crdcode
 UNION
- SELECT 4 AS fmv_id,
-    gmarks.gmk_crdcode AS fmv_crdcode,
-    sum(gmarks.gmk_mark) AS fmv_total,
-    count(gmarks.gmk_mark) AS fmv_count
-   FROM public.gmarks
-  WHERE ((gmarks.gmk_mark IS NOT NULL) AND (gmarks.gmk_mark >= 0) AND (gmarks.gmk_mark <= 5))
-  GROUP BY gmarks.gmk_crdcode;
+SELECT 4                      AS fmv_id,
+       gmarks.gmk_crdcode     AS fmv_crdcode,
+       sum(gmarks.gmk_mark)   AS fmv_total,
+       count(gmarks.gmk_mark) AS fmv_count
+FROM public.gmarks
+WHERE ((gmarks.gmk_mark IS NOT NULL) AND (gmarks.gmk_mark >= 0) AND (gmarks.gmk_mark <= 5))
+GROUP BY gmarks.gmk_crdcode;
 
 
-CREATE TABLE public.gosexams (
+CREATE TABLE IF NOT EXISTS public.gosexams (
     gex_pcode serial NOT NULL,
     gex_subcode integer NOT NULL,
     gex_plncode integer NOT NULL
 );
 
 
-CREATE TABLE public.groups (
-    grp_pcode serial NOT NULL,
-    grp_name character varying(20) NOT NULL,
-    grp_active boolean DEFAULT false NOT NULL,
-    grp_spccode integer NOT NULL,
-    grp_master character varying(150),
-    grp_year integer NOT NULL,
+CREATE TABLE IF NOT EXISTS public.groups (
+    grp_pcode      serial NOT NULL,
+    grp_name       character varying(20) NOT NULL,
+    grp_active     boolean DEFAULT false NOT NULL,
+    grp_spccode    integer NOT NULL,
+    grp_master     character varying(150),
+    grp_year       integer NOT NULL,
     grp_extramural boolean DEFAULT false NOT NULL,
-    grp_course integer DEFAULT 1 NOT NULL,
-    grp_plncode integer,
+    grp_course     integer DEFAULT 1     NOT NULL,
+    grp_plncode    integer,
     grp_commercial boolean DEFAULT false NOT NULL
 );
 
 
-CREATE TABLE public.groupsemesters (
-    grs_pcode serial NOT NULL,
-    grs_course integer NOT NULL,
-    grs_semester integer NOT NULL,
-    grs_beginweek integer NOT NULL,
+CREATE TABLE IF NOT EXISTS public.groupsemesters (
+    grs_pcode      serial NOT NULL,
+    grs_course     integer NOT NULL,
+    grs_semester   integer NOT NULL,
+    grs_beginweek  integer NOT NULL,
     grs_beginmonth integer NOT NULL,
-    grs_beginyear integer NOT NULL,
-    grs_endweek integer NOT NULL,
-    grs_endmonth integer NOT NULL,
-    grs_endyear integer NOT NULL,
-    grs_grpcode integer NOT NULL
+    grs_beginyear  integer NOT NULL,
+    grs_endweek    integer NOT NULL,
+    grs_endmonth   integer NOT NULL,
+    grs_endyear    integer NOT NULL,
+    grs_grpcode    integer NOT NULL
 );
 
 
-CREATE TABLE public.load (
+CREATE TABLE IF NOT EXISTS public.load (
     lod_pcode serial NOT NULL,
     lod_subcode integer NOT NULL,
     lod_exfcode integer,
@@ -268,20 +270,20 @@ CREATE TABLE public.load (
 );
 
 
-CREATE TABLE public.messages (
+CREATE TABLE IF NOT EXISTS public.messages (
     msg_pcode serial NOT NULL,
     msg_from character varying(255) NOT NULL,
     msg_srcaccount integer,
-    msg_dstaccount integer NOT NULL,
-    msg_title character varying(255) NOT NULL,
-    msg_text text NOT NULL,
-    msg_datetime timestamp without time zone DEFAULT now() NOT NULL,
-    msg_received boolean DEFAULT false NOT NULL,
-    msg_deleted boolean DEFAULT false NOT NULL
+    msg_dstaccount integer               NOT NULL,
+    msg_title      varchar(255)          NOT NULL,
+    msg_text       text                  NOT NULL,
+    msg_datetime   timestamp without time zone DEFAULT now() NOT NULL,
+    msg_received   boolean DEFAULT false NOT NULL,
+    msg_deleted    boolean DEFAULT false NOT NULL
 );
 
 
-CREATE TABLE public.weekmissings (
+CREATE TABLE IF NOT EXISTS public.weekmissings (
     wms_pcode serial NOT NULL,
     wms_year integer NOT NULL,
     wms_month integer NOT NULL,
@@ -293,26 +295,26 @@ CREATE TABLE public.weekmissings (
 );
 
 
-CREATE VIEW public.missingsview AS
- SELECT weekmissings.wms_legal AS wmv_legal,
-    weekmissings.wms_illegal AS wmv_illegal,
-    weekmissings.wms_crdcode AS wmv_crdcode,
-    weekmissings.wms_year AS wmv_year,
-    weekmissings.wms_month AS wmv_month,
-    public.getdate(weekmissings.wms_year, weekmissings.wms_month, weekmissings.wms_week) AS wmv_date
-   FROM public.weekmissings;
+CREATE OR REPLACE VIEW public.missingsview AS
+SELECT weekmissings.wms_legal                                                               AS wmv_legal,
+       weekmissings.wms_illegal                                                             AS wmv_illegal,
+       weekmissings.wms_crdcode                                                             AS wmv_crdcode,
+       weekmissings.wms_year                                                                AS wmv_year,
+       weekmissings.wms_month                                                               AS wmv_month,
+       public.getdate(weekmissings.wms_year, weekmissings.wms_month, weekmissings.wms_week) AS wmv_date
+FROM public.weekmissings;
 
 
-CREATE TABLE public.modules (
+CREATE TABLE IF NOT EXISTS public.modules (
     mod_pcode serial NOT NULL,
     mod_name character varying(255) NOT NULL,
     mod_plncode integer NOT NULL,
     mod_exfcode integer,
-    mod_number integer DEFAULT 0 NOT NULL
+    mod_number  integer DEFAULT 0 NOT NULL
 );
 
 
-CREATE TABLE public.monthmarks (
+CREATE TABLE IF NOT EXISTS public.monthmarks (
     mmk_pcode serial NOT NULL,
     mmk_year integer NOT NULL,
     mmk_month integer NOT NULL,
@@ -323,14 +325,14 @@ CREATE TABLE public.monthmarks (
 );
 
 
-CREATE TABLE public.places (
+CREATE TABLE IF NOT EXISTS public.places (
     plc_pcode serial NOT NULL,
     plc_type integer DEFAULT 0 NOT NULL,
     plc_name character varying(255) NOT NULL
 );
 
 
-CREATE TABLE public.plans (
+CREATE TABLE IF NOT EXISTS public.plans (
     pln_pcode serial NOT NULL,
     pln_spccode integer NOT NULL,
     pln_name character varying(255) NOT NULL,
@@ -345,15 +347,15 @@ CREATE TABLE public.plans (
 );
 
 
-CREATE TABLE public.pmarks (
+CREATE TABLE IF NOT EXISTS public.pmarks (
     pmk_prccode integer,
     pmk_crdcode integer,
-    pmk_mark integer,
-    pmk_pcode serial NOT NULL
+    pmk_mark    integer,
+    pmk_pcode   serial NOT NULL
 );
 
 
-CREATE TABLE public.practics (
+CREATE TABLE IF NOT EXISTS public.practics (
     prc_fullname character varying(255) NOT NULL,
     prc_pcode serial NOT NULL,
     prc_course integer DEFAULT 1 NOT NULL,
@@ -365,7 +367,7 @@ CREATE TABLE public.practics (
 );
 
 
-CREATE TABLE public.renamings (
+CREATE TABLE IF NOT EXISTS public.renamings (
     ren_oldname character varying(255) NOT NULL,
     ren_newname character varying(255) NOT NULL,
     ren_pcode serial NOT NULL,
@@ -373,7 +375,7 @@ CREATE TABLE public.renamings (
 );
 
 
-CREATE TABLE public.requests (
+CREATE TABLE IF NOT EXISTS public.requests (
     req_pcode serial NOT NULL,
     req_psncode integer NOT NULL,
     req_spccode integer NOT NULL,
@@ -382,7 +384,7 @@ CREATE TABLE public.requests (
 );
 
 
-CREATE TABLE public.schools (
+CREATE TABLE IF NOT EXISTS public.schools (
     scl_fullname character varying(255) NOT NULL,
     scl_shortname character varying(255) NOT NULL,
     scl_pcode serial NOT NULL,
@@ -392,7 +394,7 @@ CREATE TABLE public.schools (
 );
 
 
-CREATE TABLE public.seats (
+CREATE TABLE IF NOT EXISTS public.seats (
     sea_pcode serial NOT NULL,
     sea_spccode integer NOT NULL,
     sea_year integer NOT NULL,
@@ -402,19 +404,19 @@ CREATE TABLE public.seats (
 );
 
 
-CREATE TABLE public.semestermarks (
+CREATE TABLE IF NOT EXISTS public.semestermarks (
     smk_pcode serial NOT NULL,
     smk_course integer NOT NULL,
     smk_semester integer NOT NULL,
-    smk_mark integer NOT NULL,
-    smk_psncode integer NOT NULL,
-    smk_crdcode integer NOT NULL,
-    smk_subcode integer,
-    smk_modcode integer
+    smk_mark     integer NOT NULL,
+    smk_psncode  integer NOT NULL,
+    smk_crdcode  integer NOT NULL,
+    smk_subcode  integer,
+    smk_modcode  integer
 );
 
 
-CREATE TABLE public.specialities (
+CREATE TABLE IF NOT EXISTS public.specialities (
     spc_description character varying(255) NOT NULL,
     spc_pcode serial NOT NULL,
     spc_name character varying(10) NOT NULL,
@@ -423,7 +425,7 @@ CREATE TABLE public.specialities (
 );
 
 
-CREATE TABLE public.subjects (
+CREATE TABLE IF NOT EXISTS public.subjects (
     sub_fullname character varying(255) NOT NULL,
     sub_pcode serial NOT NULL,
     sub_shortname character varying(30),
@@ -820,7 +822,7 @@ ALTER TABLE ONLY public.weekmissings
     ADD CONSTRAINT weekmissings_persons_fk FOREIGN KEY (wms_psncode) REFERENCES public.persons(psn_pcode) ON UPDATE CASCADE ON DELETE CASCADE;
 
 
-CREATE FUNCTION public.clearoldgroupmarks(groupid integer) RETURNS void
+CREATE OR REPLACE FUNCTION public.clearoldgroupmarks(groupid integer) RETURNS void
     LANGUAGE sql
     AS $$
             DELETE FROM fmarks WHERE fmk_subcode NOT IN (SELECT sub_pcode FROM subjects, groups 
@@ -847,7 +849,7 @@ CREATE FUNCTION public.clearoldgroupmarks(groupid integer) RETURNS void
             $$;
 
 
-CREATE FUNCTION public.countmarks(personid integer) RETURNS bigint
+CREATE OR REPLACE FUNCTION public.countmarks(personid integer) RETURNS bigint
     LANGUAGE sql
     AS $$ 
             SELECT (SELECT COUNT(*) FROM monthmarks WHERE mmk_psncode = personId) + 
@@ -855,14 +857,14 @@ CREATE FUNCTION public.countmarks(personid integer) RETURNS bigint
             $$;
 
 
-CREATE FUNCTION public.getaveragemark(cardid integer) RETURNS numeric
+CREATE OR REPLACE FUNCTION public.getaveragemark(cardid integer) RETURNS numeric
     LANGUAGE sql
     AS $$ 
             SELECT CAST(CAST(SUM(fmv_total) AS decimal(5,2)) / SUM(fmv_count) AS decimal(3,2)) FROM fmarkview 
             WHERE (fmv_crdcode = cardId);$$;
 
 
-CREATE FUNCTION public.getspecialityweight(integer) RETURNS bigint
+CREATE OR REPLACE FUNCTION public.getspecialityweight(integer) RETURNS bigint
     LANGUAGE sql
     AS $_$
             SELECT (SELECT COUNT(*) FROM departmentprofiles WHERE (dpr_spccode = $1)) +
@@ -873,7 +875,7 @@ CREATE FUNCTION public.getspecialityweight(integer) RETURNS bigint
             (SELECT COUNT(*) FROM seats WHERE (sea_spccode = $1));$_$;
 
 
-CREATE FUNCTION public.movespeciality(src integer, dst integer) RETURNS void
+CREATE OR REPLACE FUNCTION public.movespeciality(src integer, dst integer) RETURNS void
     LANGUAGE sql
     AS $_$
 UPDATE cards SET crd_spccode = $2 WHERE (crd_spccode = $1);
@@ -884,7 +886,7 @@ DELETE FROM specialities WHERE (spc_pcode = $1);
 $_$;
 
 
-CREATE FUNCTION public.replacespeciality(integer, integer) RETURNS void
+CREATE OR REPLACE FUNCTION public.replacespeciality(integer, integer) RETURNS void
     LANGUAGE sql
     AS $_$
             UPDATE plans SET pln_spccode = $2 WHERE (pln_spccode = $1);
@@ -896,7 +898,7 @@ CREATE FUNCTION public.replacespeciality(integer, integer) RETURNS void
             DELETE FROM specialities WHERE (spc_pcode = $1);$_$;
 
 
-CREATE FUNCTION public.test(integer) RETURNS integer
+CREATE OR REPLACE FUNCTION public.test(integer) RETURNS integer
     LANGUAGE sql
     AS $$
 SELECT 1 AS value UNION
